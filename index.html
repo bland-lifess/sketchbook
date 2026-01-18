@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Doodle Gacha</title>
+    <link rel="stylesheet" href="style.css">
+    <link href="https://fonts.googleapis.com/css2?family=Patrick+Hand&display=swap" rel="stylesheet">
+</head>
+<body>
+
+    <div class="notebook-layout">
+        
+        <header class="paper-card header-stats">
+            <div class="stat-group">
+                <span class="label">GOLD</span>
+                <span id="gold-display" class="value">0</span>
+            </div>
+            <div class="stat-group">
+                <span class="label">INCOME/SEC</span>
+                <span id="income-display" class="value">0</span>
+            </div>
+        </header>
+
+        <section class="paper-card area-section">
+            <div class="area-header">
+                <h3>LOCATION</h3>
+                <button class="btn-small" onclick="unlockNextArea()" id="unlock-btn">Unlock Next ($500)</button>
+            </div>
+            <div class="area-controls">
+                <button class="nav-btn" onclick="changeArea(-1)">◀</button>
+                <div class="current-area-info">
+                    <span id="area-name">The Scrap Paper</span>
+                    <small id="area-stats">Luck x1.0 | Stats x1.0</small>
+                </div>
+                <button class="nav-btn" onclick="changeArea(1)">▶</button>
+            </div>
+        </section>
+
+        <section class="desk-section">
+            <h3>ACTIVE DOODLES (Generates Gold)</h3>
+            <div class="slots-container" id="slots-container">
+                </div>
+        </section>
+
+        <div class="summon-container">
+            <button class="btn-main" onclick="summonDoodle()">
+                DRAW DOODLE <br>
+                <span id="summon-cost" class="cost-text">($10)</span>
+            </button>
+        </div>
+
+        <section class="paper-card collection-section">
+            <h3>SKETCHBOOK</h3>
+            <div class="filters">
+                <button class="filter-btn" onclick="clearSave()">Reset Data</button> </div>
+            <div id="inventory-grid" class="inventory-grid">
+                </div>
+        </section>
+
+    </div>
+
+    <div id="modal" class="modal hidden">
+        <div class="modal-content paper-card">
+            <h2>NEW SKETCH!</h2>
+            <div id="modal-img-placeholder" class="img-box large"></div>
+            <h3 id="modal-name">Doodle Name</h3>
+            <div class="modal-stats">
+                <p>Rarity: <span id="modal-rarity">Common</span></p>
+                <p>Vibe: <span id="modal-vibe">0</span></p>
+                <div class="stat-bars">
+                    <p>ATK: <span id="modal-atk">0</span></p>
+                    <p>DEF: <span id="modal-def">0</span></p>
+                    <p>SPD: <span id="modal-spd">0</span></p>
+                </div>
+            </div>
+            <button class="btn-main" onclick="closeModal()">KEEP IT</button>
+        </div>
+    </div>
+
+    <script src="script.js"></script>
+</body>
+</html>
