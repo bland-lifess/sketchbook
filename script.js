@@ -15,7 +15,8 @@ const AREAS = [
     { name: "Art Studio", cost: 2500, mult: 3.0, luck: 1.5 }
 ];
 
-let gameData = {
+// This is the "Fresh" state
+const INITIAL_STATE = {
     gold: 100,
     inventory: [],
     slots: [
@@ -27,11 +28,16 @@ let gameData = {
     areasUnlocked: 0
 };
 
+let gameData = JSON.parse(JSON.stringify(INITIAL_STATE));
+
 /* --- SYSTEM FUNCTIONS --- */
 
-// Ensure the script waits for the window to load before running
 window.onload = function() {
     loadGame();
+    // Force modal closed on start
+    const modal = document.getElementById('modal');
+    if(modal) modal.style.display = 'none';
+    
     renderUI();
     setInterval(idleLoop, 1000);
 };
@@ -42,7 +48,6 @@ function idleLoop() {
         if (slot.equippedId) {
             const doodle = gameData.inventory.find(d => d.uid === slot.equippedId);
             if (doodle) {
-                // Earn 10% of Vibe per second, modified by slot level
                 income += Math.floor((doodle.vibe * slot.level) * 0.1); 
             }
         }
@@ -68,7 +73,6 @@ function summonDoodle() {
 
     gameData.gold -= cost;
 
-    // Rarity Logic
     const areaLuck = AREAS[gameData.areaIndex].luck;
     const roll = Math.random() * 100;
     let rarity = 'Common';
@@ -78,7 +82,6 @@ function summonDoodle() {
     const pool = MONSTER_DB.filter(m => m.rarity === rarity);
     const template = pool[Math.floor(Math.random() * pool.length)];
 
-    // Stat Logic
     const areaMult = AREAS[gameData.areaIndex].mult;
     const atk = Math.floor((template.base + Math.random() * template.variance) * areaMult);
     const def = Math.floor((template.base + Math.random() * template.variance) * areaMult);
@@ -159,55 +162,67 @@ function unlockNextArea() {
 /* --- UI RENDERING --- */
 
 function renderUI() {
-    document.getElementById('gold-display').innerText = Math.floor(gameData.gold);
+    const goldDisp = document.getElementById('gold-display');
+    if(goldDisp) goldDisp.innerText = Math.floor(gameData.gold);
     
     const area = AREAS[gameData.areaIndex];
-    document.getElementById('area-name').innerText = area.name;
-    document.getElementById('area-stats').innerText = `Luck x${area.luck} | Stats x${area.mult}`;
+    const areaNameDisp = document.getElementById('area-name');
+    if(areaNameDisp) areaNameDisp.innerText = area.name;
+
+    const areaStatsDisp = document.getElementById('area-stats');
+    if(areaStatsDisp) areaStatsDisp.innerText = `Luck x${area.luck} | Stats x${area.mult}`;
     
     const nextAreaIdx = gameData.areasUnlocked + 1;
     const unlockBtn = document.getElementById('unlock-btn');
-    if (nextAreaIdx < AREAS.length) {
-        unlockBtn.innerText = `Unlock ${AREAS[nextAreaIdx].name} ($${AREAS[nextAreaIdx].cost})`;
-        unlockBtn.style.display = 'block';
-    } else {
-        unlockBtn.style.display = 'none';
+    if (unlockBtn) {
+        if (nextAreaIdx < AREAS.length) {
+            unlockBtn.innerText = `Unlock ${AREAS[nextAreaIdx].name} ($${AREAS[nextAreaIdx].cost})`;
+            unlockBtn.style.display = 'block';
+        } else {
+            unlockBtn.style.display = 'none';
+        }
     }
 
-    document.getElementById('summon-cost').innerText = `($${10 * (gameData.areaIndex + 1)})`;
+    const summonCostDisp = document.getElementById('summon-cost');
+    if(summonCostDisp) summonCostDisp.innerText = `($${10 * (gameData.areaIndex + 1)})`;
 
     // Render Slots
     const slotsDiv = document.getElementById('slots-container');
-    slotsDiv.innerHTML = '';
-    gameData.slots.forEach((slot, idx) => {
-        const slotDiv = document.createElement('div');
-        slotDiv.className = 'slot';
-        
-        if (slot.equippedId) {
-            const doodle = gameData.inventory.find(d => d.uid === slot.equippedId);
-            slotDiv.innerHTML = `
-                <div class="img-box">${getImageHTML(doodle.img)}</div>
-                <div style="font-weight:bold">${doodle.name}</div>
-                <div style="font-size:0.8rem">Vibe: ${doodle.vibe}</div>
-                <button class="slot-upgrade-btn" onclick="unequipDoodle(${idx})">Unequip</button>
-            `;
-        } else {
-            slotDiv.innerHTML = `<span style="opacity:0.5">Empty Slot</span>`;
-        }
-        
-        const upBtn = document.createElement('button');
-        upBtn.className = 'slot-upgrade-btn';
-        upBtn.innerText = `Lvl ${slot.level} (Up: $${slot.level * 200})`;
-        upBtn.onclick = (e) => { e.stopPropagation(); upgradeSlot(idx); };
-        slotDiv.appendChild(upBtn);
-        slotsDiv.appendChild(slotDiv);
-    });
+    if(slotsDiv) {
+        slotsDiv.innerHTML = '';
+        gameData.slots.forEach((slot, idx) => {
+            const slotDiv = document.createElement('div');
+            slotDiv.className = 'slot';
+            
+            if (slot.equippedId) {
+                const doodle = gameData.inventory.find(d => d.uid === slot.equippedId);
+                if(doodle) {
+                    slotDiv.innerHTML = `
+                        <div class="img-box">${getImageHTML(doodle.img)}</div>
+                        <div style="font-weight:bold">${doodle.name}</div>
+                        <div style="font-size:0.8rem">Vibe: ${doodle.vibe}</div>
+                        <button class="slot-upgrade-btn" onclick="unequipDoodle(${idx})">Unequip</button>
+                    `;
+                }
+            } else {
+                slotDiv.innerHTML = `<span style="opacity:0.5">Empty Slot</span>`;
+            }
+            
+            const upBtn = document.createElement('button');
+            upBtn.className = 'slot-upgrade-btn';
+            upBtn.innerText = `Lvl ${slot.level} (Up: $${slot.level * 200})`;
+            upBtn.onclick = (e) => { e.stopPropagation(); upgradeSlot(idx); };
+            slotDiv.appendChild(upBtn);
+            slotsDiv.appendChild(slotDiv);
+        });
+    }
 
     renderInventory();
 }
 
 function renderInventory() {
     const grid = document.getElementById('inventory-grid');
+    if(!grid) return;
     grid.innerHTML = '';
     const sortedInv = [...gameData.inventory].reverse();
 
@@ -240,6 +255,8 @@ function getRarityColor(rarity) {
 
 function showPopup(doodle) {
     const modal = document.getElementById('modal');
+    if(!modal) return;
+    
     document.getElementById('modal-name').innerText = doodle.name;
     document.getElementById('modal-rarity').innerText = doodle.rarity;
     document.getElementById('modal-vibe').innerText = doodle.vibe;
@@ -247,28 +264,36 @@ function showPopup(doodle) {
     document.getElementById('modal-def').innerText = doodle.stats.def;
     document.getElementById('modal-spd').innerText = doodle.stats.spd;
     document.getElementById('modal-img-placeholder').innerHTML = getImageHTML(doodle.img);
+    
+    modal.style.display = 'flex'; // Use style.display instead of class
     modal.classList.remove('hidden');
 }
 
 function closeModal() {
-    document.getElementById('modal').classList.add('hidden');
+    const modal = document.getElementById('modal');
+    if(modal) modal.style.display = 'none';
 }
 
 function saveGame() {
-    localStorage.setItem('doodleGachaSave_v1', JSON.stringify(gameData));
+    localStorage.setItem('doodleGachaSave_v2', JSON.stringify(gameData));
 }
 
 function loadGame() {
-    const saved = localStorage.getItem('doodleGachaSave_v1');
+    const saved = localStorage.getItem('doodleGachaSave_v2');
     if (saved) {
-        const parsed = JSON.parse(saved);
-        gameData = Object.assign(gameData, parsed);
+        try {
+            const parsed = JSON.parse(saved);
+            gameData = Object.assign({}, INITIAL_STATE, parsed);
+        } catch(e) {
+            gameData = JSON.parse(JSON.stringify(INITIAL_STATE));
+        }
     }
 }
 
 function clearSave() {
     if(confirm("Clear all your progress?")) {
         localStorage.removeItem('doodleGachaSave_v1');
+        localStorage.removeItem('doodleGachaSave_v2');
         location.reload();
     }
 }
