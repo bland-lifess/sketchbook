@@ -1,6 +1,5 @@
 /* --- CONFIGURATION & DATA --- */
 
-// The Monster Database
 const MONSTER_DB = [
     { id: 'm1', name: 'Scrap-Ball', rarity: 'Common', base: 5, variance: 5, img: 'scrap_ball.png' },
     { id: 'm2', name: 'Pencil-Stub', rarity: 'Common', base: 8, variance: 6, img: 'pencil_stub.png' },
@@ -16,10 +15,9 @@ const AREAS = [
     { name: "Art Studio", cost: 2500, mult: 3.0, luck: 1.5 }
 ];
 
-// Initial State
 let gameData = {
     gold: 100,
-    inventory: [], // Array of obtained doodles
+    inventory: [],
     slots: [
         { level: 1, equippedId: null },
         { level: 1, equippedId: null },
@@ -31,73 +29,64 @@ let gameData = {
 
 /* --- SYSTEM FUNCTIONS --- */
 
-function init() {
+// Ensure the script waits for the window to load before running
+window.onload = function() {
     loadGame();
     renderUI();
-    // Start Idle Loop (1 second tick)
     setInterval(idleLoop, 1000);
-}
+};
 
 function idleLoop() {
     let income = 0;
-    
     gameData.slots.forEach(slot => {
         if (slot.equippedId) {
             const doodle = gameData.inventory.find(d => d.uid === slot.equippedId);
             if (doodle) {
-                // Formula: Vibe * SlotLevel * AreaMultiplier
-                income += Math.floor(doodle.vibe * slot.level * 0.1); 
+                // Earn 10% of Vibe per second, modified by slot level
+                income += Math.floor((doodle.vibe * slot.level) * 0.1); 
             }
         }
     });
 
-    // Minimum income of 1 if you have stuff equipped but low stats
     if (income < 1 && gameData.slots.some(s => s.equippedId)) income = 1;
 
-    addGold(income);
+    gameData.gold += income;
+    document.getElementById('gold-display').innerText = Math.floor(gameData.gold);
     document.getElementById('income-display').innerText = income;
     saveGame();
-}
-
-function addGold(amount) {
-    gameData.gold += amount;
-    updateHeader();
 }
 
 /* --- ACTIONS --- */
 
 function summonDoodle() {
-    const cost = 10 * (gameData.areaIndex + 1); // Cost scales with area
+    const cost = 10 * (gameData.areaIndex + 1);
     
     if (gameData.gold < cost) {
         alert("Not enough Gold!");
         return;
     }
 
-    addGold(-cost);
+    gameData.gold -= cost;
 
-    // 1. Pick Rarity based on Luck
+    // Rarity Logic
     const areaLuck = AREAS[gameData.areaIndex].luck;
     const roll = Math.random() * 100;
     let rarity = 'Common';
-    if (roll > (90 / areaLuck)) rarity = 'Legendary';
-    else if (roll > (70 / areaLuck)) rarity = 'Rare';
+    if (roll > (98 / areaLuck)) rarity = 'Legendary';
+    else if (roll > (80 / areaLuck)) rarity = 'Rare';
 
-    // 2. Pick Monster
-    const pool = MONSTER_DB.filter(m => m.rarity === rarity) || MONSTER_DB.filter(m => m.rarity === 'Common');
+    const pool = MONSTER_DB.filter(m => m.rarity === rarity);
     const template = pool[Math.floor(Math.random() * pool.length)];
 
-    // 3. Roll Stats (Area Multiplier affects stats)
+    // Stat Logic
     const areaMult = AREAS[gameData.areaIndex].mult;
     const atk = Math.floor((template.base + Math.random() * template.variance) * areaMult);
     const def = Math.floor((template.base + Math.random() * template.variance) * areaMult);
     const spd = Math.floor((template.base + Math.random() * template.variance) * areaMult);
-    
     const vibe = atk + def + spd;
 
-    // 4. Create Object
     const newDoodle = {
-        uid: Date.now() + Math.random(), // Unique ID
+        uid: Date.now() + Math.random(),
         name: template.name,
         rarity: rarity,
         img: template.img,
@@ -107,18 +96,18 @@ function summonDoodle() {
 
     gameData.inventory.push(newDoodle);
     showPopup(newDoodle);
-    renderInventory();
+    renderUI();
     saveGame();
 }
 
 function equipDoodle(uid) {
-    // Find first empty slot or alert
+    const isAlreadyEquipped = gameData.slots.some(s => s.equippedId === uid);
+    if (isAlreadyEquipped) return;
+
     const emptySlot = gameData.slots.find(s => s.equippedId === null);
-    
     if (emptySlot) {
         emptySlot.equippedId = uid;
     } else {
-        // If full, replace the first one (simple logic for now)
         gameData.slots[0].equippedId = uid;
     }
     renderUI();
@@ -136,9 +125,10 @@ function upgradeSlot(index) {
     const cost = slot.level * 200;
     
     if (gameData.gold >= cost) {
-        addGold(-cost);
+        gameData.gold -= cost;
         slot.level++;
         renderUI();
+        saveGame();
     }
 }
 
@@ -158,9 +148,9 @@ function unlockNextArea() {
 
     const cost = AREAS[nextIndex].cost;
     if (gameData.gold >= cost) {
-        addGold(-cost);
+        gameData.gold -= cost;
         gameData.areasUnlocked++;
-        gameData.areaIndex = nextIndex; // Auto move to new area
+        gameData.areaIndex = nextIndex;
         renderUI();
         saveGame();
     }
@@ -168,14 +158,9 @@ function unlockNextArea() {
 
 /* --- UI RENDERING --- */
 
-function updateHeader() {
-    document.getElementById('gold-display').innerText = gameData.gold;
-}
-
 function renderUI() {
-    updateHeader();
+    document.getElementById('gold-display').innerText = Math.floor(gameData.gold);
     
-    // Render Area
     const area = AREAS[gameData.areaIndex];
     document.getElementById('area-name').innerText = area.name;
     document.getElementById('area-stats').innerText = `Luck x${area.luck} | Stats x${area.mult}`;
@@ -183,7 +168,7 @@ function renderUI() {
     const nextAreaIdx = gameData.areasUnlocked + 1;
     const unlockBtn = document.getElementById('unlock-btn');
     if (nextAreaIdx < AREAS.length) {
-        unlockBtn.innerText = `Unlock Next ($${AREAS[nextAreaIdx].cost})`;
+        unlockBtn.innerText = `Unlock ${AREAS[nextAreaIdx].name} ($${AREAS[nextAreaIdx].cost})`;
         unlockBtn.style.display = 'block';
     } else {
         unlockBtn.style.display = 'none';
@@ -194,7 +179,6 @@ function renderUI() {
     // Render Slots
     const slotsDiv = document.getElementById('slots-container');
     slotsDiv.innerHTML = '';
-    
     gameData.slots.forEach((slot, idx) => {
         const slotDiv = document.createElement('div');
         slotDiv.className = 'slot';
@@ -208,16 +192,14 @@ function renderUI() {
                 <button class="slot-upgrade-btn" onclick="unequipDoodle(${idx})">Unequip</button>
             `;
         } else {
-            slotDiv.innerHTML = `<span style="opacity:0.5">Empty</span>`;
+            slotDiv.innerHTML = `<span style="opacity:0.5">Empty Slot</span>`;
         }
         
-        // Upgrade button
         const upBtn = document.createElement('button');
         upBtn.className = 'slot-upgrade-btn';
         upBtn.innerText = `Lvl ${slot.level} (Up: $${slot.level * 200})`;
-        upBtn.onclick = () => upgradeSlot(idx);
+        upBtn.onclick = (e) => { e.stopPropagation(); upgradeSlot(idx); };
         slotDiv.appendChild(upBtn);
-        
         slotsDiv.appendChild(slotDiv);
     });
 
@@ -227,30 +209,24 @@ function renderUI() {
 function renderInventory() {
     const grid = document.getElementById('inventory-grid');
     grid.innerHTML = '';
-    
-    // Sort logic could go here
-    const sortedInv = [...gameData.inventory].reverse(); // Newest first
+    const sortedInv = [...gameData.inventory].reverse();
 
     sortedInv.forEach(doodle => {
         const isEquipped = gameData.slots.some(s => s.equippedId === doodle.uid);
-        
         const card = document.createElement('div');
         card.className = `inv-item ${isEquipped ? 'equipped' : ''}`;
         card.innerHTML = `
             <div class="img-box">${getImageHTML(doodle.img)}</div>
-            <div>${doodle.name}</div>
-            <div style="color:${getRarityColor(doodle.rarity)}">${doodle.rarity}</div>
+            <div><b>${doodle.name}</b></div>
+            <div style="color:${getRarityColor(doodle.rarity)}; font-size: 0.7rem">${doodle.rarity}</div>
             <div>Vibe: ${doodle.vibe}</div>
         `;
-        card.onclick = () => { if(!isEquipped) equipDoodle(doodle.uid); };
+        card.onclick = () => equipDoodle(doodle.uid);
         grid.appendChild(card);
     });
 }
 
-// Helper to handle images or fallbacks
 function getImageHTML(imgName) {
-    // If you have uploaded images to an 'images' folder, this works.
-    // Otherwise it shows a generic icon.
     return `<img src="images/${imgName}" onerror="this.style.display='none';this.parentNode.innerText='?'">`;
 }
 
@@ -271,7 +247,6 @@ function showPopup(doodle) {
     document.getElementById('modal-def').innerText = doodle.stats.def;
     document.getElementById('modal-spd').innerText = doodle.stats.spd;
     document.getElementById('modal-img-placeholder').innerHTML = getImageHTML(doodle.img);
-    
     modal.classList.remove('hidden');
 }
 
@@ -280,20 +255,20 @@ function closeModal() {
 }
 
 function saveGame() {
-    localStorage.setItem('doodleGachaSave', JSON.stringify(gameData));
+    localStorage.setItem('doodleGachaSave_v1', JSON.stringify(gameData));
 }
 
 function loadGame() {
-    const saved = localStorage.getItem('doodleGachaSave');
+    const saved = localStorage.getItem('doodleGachaSave_v1');
     if (saved) {
-        gameData = JSON.parse(saved);
+        const parsed = JSON.parse(saved);
+        gameData = Object.assign(gameData, parsed);
     }
 }
 
 function clearSave() {
-    localStorage.removeItem('doodleGachaSave');
-    location.reload();
+    if(confirm("Clear all your progress?")) {
+        localStorage.removeItem('doodleGachaSave_v1');
+        location.reload();
+    }
 }
-
-// Start
-init();
